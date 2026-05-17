@@ -1,33 +1,26 @@
-# =========================
-# STAGE 1: BUILD
-# =========================
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Use official Java 17 base image
+FROM openjdk:17-jdk-slim
 
+# Set working directory
 WORKDIR /app
 
-# Copy only pom first (cache dependencies)
+# Copy Maven wrapper and pom.xml first (for caching)
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
 
-RUN mvn dependency:go-offline -B
-
-# Copy source
+# Copy source code
 COPY src src
 
-# Build jar
-RUN mvn clean package -DskipTests
+# Make Maven wrapper executable
+RUN chmod +x mvnw
 
+# Build the Spring Boot app
+RUN ./mvnw package -DskipTests
 
-# =========================
-# STAGE 2: RUN
-# =========================
-FROM eclipse-temurin:17-jdk-jammy
+# Expose port 8080
+EXPOSE 8080
 
-WORKDIR /app
+# Run the jar (adjust the JAR name if needed)
+CMD ["java", "-jar", "target/lakeSide-hotel-demo-server-0.0.1-SNAPSHOT.jar"]
 
-COPY --from=build /app/target/*.jar app.jar
-
-EXPOSE 10000
-
-ENV PORT=10000
-
-ENTRYPOINT ["java", "-jar", "app.jar"]
