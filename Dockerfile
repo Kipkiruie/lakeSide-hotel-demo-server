@@ -1,31 +1,30 @@
 # =========================
-# Stage 1: Build
+# STAGE 1: BUILD
 # =========================
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 
 WORKDIR /app
 
+# Copy only pom first (cache dependencies)
 COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
-RUN chmod +x mvnw
 
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
+# Copy source
 COPY src src
 
-RUN ./mvnw clean package -DskipTests
+# Build jar
+RUN mvn clean package -DskipTests
 
 
 # =========================
-# Stage 2: Run
+# STAGE 2: RUN
 # =========================
 FROM eclipse-temurin:17-jdk-jammy
 
 WORKDIR /app
 
-# Copy EXACT jar (based on your build output)
-COPY --from=build /app/target/lakeSide-hotel-0.0.1-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 10000
 
