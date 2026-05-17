@@ -20,7 +20,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @RequiredArgsConstructor
-@EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true, prePostEnabled = true)
+@EnableMethodSecurity(
+        securedEnabled = true,
+        jsr250Enabled = true,
+        prePostEnabled = true
+)
 public class WebSecurityConfig {
 
     private final HotelUserDetailsService userDetailsService;
@@ -38,33 +42,85 @@ public class WebSecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+
+        DaoAuthenticationProvider authProvider =
+                new DaoAuthenticationProvider();
+
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
+
         return authProvider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authConfig
+    ) throws Exception {
+
         return authConfig.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthEntryPoint))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+    public SecurityFilterChain filterChain(HttpSecurity http)
+            throws Exception {
+
+        http
+
+                // Disable CSRF
+                .csrf(AbstractHttpConfigurer::disable)
+
+                // Handle unauthorized requests
+                .exceptionHandling(exception ->
+                        exception.authenticationEntryPoint(jwtAuthEntryPoint)
+                )
+
+                // Stateless JWT session
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // Endpoint permissions
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/", "/error", "/auth/**", "/rooms/room/types", "/rooms/all-rooms", "/bookings/available-rooms").permitAll()
-                        // Admin-only endpoints
-                        .requestMatchers("/rooms/add/new-room", "/rooms/update/**", "/rooms/delete/**", "/roles/**").hasRole("ADMIN")
-                        // Everything else requires authentication
+
+                        // PUBLIC ENDPOINTS
+                        .requestMatchers(
+                                "/",
+                                "/error",
+
+                                // AUTH
+                                "/auth/**",
+
+                                // ROOMS
+                                "/rooms/room/types",
+                                "/rooms/all-rooms",
+
+                                // BOOKINGS
+                                "/bookings/available-rooms",
+
+                                // MPESA
+                                "/api/mpesa/**"
+                        ).permitAll()
+
+                        // ADMIN ENDPOINTS
+                        .requestMatchers(
+                                "/rooms/add/new-room",
+                                "/rooms/update/**",
+                                "/rooms/delete/**",
+                                "/roles/**"
+                        ).hasRole("ADMIN")
+
+                        // ALL OTHER REQUESTS
                         .anyRequest().authenticated()
                 );
 
+        // Authentication provider
         http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(authenticationTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+
+        // JWT filter
+        http.addFilterBefore(
+                authenticationTokenFilter(),
+                UsernamePasswordAuthenticationFilter.class
+        );
 
         return http.build();
     }
